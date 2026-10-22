@@ -1,0 +1,6 @@
+node_modules
+dist
+.DS_Store
+# Your own film stills stay local; see public/stills/README.md
+public/stills/*
+!public/stills/README.md
