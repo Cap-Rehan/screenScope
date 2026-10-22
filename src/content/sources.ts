@@ -73,6 +73,42 @@ export const SOURCES = {
     title: 'SlashFilm: Q&A on IMAX and "LieMAX"',
     url: 'https://www.slashfilm.com/qa-imax-theatre-real-imax-liemax',
   },
+  barco: {
+    title: 'Barco DP4K-60L specification sheet',
+    url: 'https://assets.barco.com/m/75224f028c2f9d4b/original/DP4K-60L-es-Spec-sheet.pdf',
+  },
+  dolbyModel: {
+    title: 'Display Daily: a Dolby researcher’s model of real cinema contrast',
+    url: 'https://displaydaily.com/?p=56076',
+    note: 'Manufacturer research, validated on five Dolby Vision venues; not independent.',
+  },
+  dciHdr: {
+    title: 'Display Daily: DCI explains and decides what HDR is in cinemas',
+    url: 'https://displaydaily.com/dci-explains-and-decides-what-hdr-is-in-cinemas/',
+  },
+  st2113: {
+    title: 'SMPTE ST 2113:2018, colorimetry of P3 color spaces',
+    url: 'https://pub.smpte.org/pub/st2113/st2113-2018.pdf',
+    note: 'Blue primary read from a secondary summary.',
+  },
+  bt709: {
+    title: 'ITU-R Recommendation BT.709 (HDTV)',
+    url: 'https://www.itu.int/rec/R-REC-BT.709',
+  },
+  bt2020: {
+    title: 'ITU-R Recommendation BT.2020 (UHDTV)',
+    url: 'https://www.itu.int/rec/R-REC-BT.2020',
+  },
+  christieRgb: {
+    title: 'Christie CP4325-RGB datasheet',
+    url: 'https://christiedigital.com/globalassets/resources/public/christie-cp4325-rgb-datasheet.pdf',
+    note: 'Datasheet says >90% Rec. 2020; the product page says >95%.',
+  },
+  cie: {
+    title: 'CVRL: CIE 1931 2° colour matching functions',
+    url: 'http://www.cvrl.org/database/data/cmfs/ciexyz31_1.csv',
+    note: 'Used to draw the spectral locus.',
+  },
   nasa: {
     title: 'NASA/Joel Kowsky: Artemis I launch, 16 Nov 2022 (NHQ202211160006)',
     url: 'https://images.nasa.gov/details/NHQ202211160006',

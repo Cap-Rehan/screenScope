@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Ev } from '../components/Ev'
-import { pixelsPerDegree, viewAngleDeg } from '../lib/geometry'
+import { cutoffFrequency, impliedK, mtf, pixelsPerDegree, viewAngleDeg } from '../lib/geometry'
+import { Seg, pct } from '../components/ui'
 
 const W = 200 // screen width in SVG units
 const MAX_PPD = 110
@@ -41,6 +42,75 @@ function Bar({ label, value }: { label: string; value: number }) {
   )
 }
 
+const FRAME_MM = 69.6
+const CUTOFFS = [0.5, 0.2, 0.1, 0.05, 0.03] as const
+const F_MAX = 140
+
+/** Same illustrative film curve, different "K" depending on where you cut it. */
+function FilmK() {
+  const [c, setC] = useState<(typeof CUTOFFS)[number]>(0.1)
+  const f = cutoffFrequency(c)
+  const X = (v: number) => 40 + (v / F_MAX) * 340
+  const Y = (v: number) => 20 + (1 - v) * 180
+  const curve = Array.from({ length: 71 }, (_, i) => {
+    const v = (i / 70) * F_MAX
+    return `${i ? 'L' : 'M'}${X(v).toFixed(1)} ${Y(mtf(v)).toFixed(1)}`
+  }).join(' ')
+
+  return (
+    <aside className="panel grid gap-8 lg:col-span-2 lg:grid-cols-[1fr_1.1fr] lg:items-center" aria-labelledby="film-title">
+      <div>
+        <h3 id="film-title" className="display h-sub">
+          And film?
+        </h3>
+        <p className="body mt-3">
+          Film has no pixels. Detail fades gradually as it gets finer, measured as a curve (MTF)
+          <Ev k="claim" s="kodak" />, so any &ldquo;K&rdquo; number depends on where you draw the line. IMAX&rsquo;s
+          &ldquo;14K to 16K per color&rdquo; for 15/70 is a manufacturer claim, reported second-hand
+          <Ev k="claim" s="ymcinema16k" />.
+        </p>
+        <div className="mt-5">
+          <Seg label="Count detail down to this much contrast" options={CUTOFFS} value={c} onChange={setC} format={pct} />
+        </div>
+        <dl className="readout mt-5" aria-live="polite">
+          <dt>
+            &ldquo;K&rdquo; across a 69.6 mm frame
+            <Ev k="estimate" />
+          </dt>
+          <dd className="figure">{impliedK(c, FRAME_MM).toFixed(1)}K</dd>
+        </dl>
+        <p className="small mt-4">
+          An illustrative curve, not measured data for any film stock. It describes a camera negative; prints and
+          projection lose more.
+        </p>
+      </div>
+      <svg viewBox="0 0 400 240" className="w-full" aria-hidden="true">
+        <line x1={40} y1={200} x2={380} y2={200} stroke="var(--color-ash)" strokeOpacity={0.5} />
+        <line x1={40} y1={20} x2={40} y2={200} stroke="var(--color-ash)" strokeOpacity={0.5} />
+        <text x={40} y={225} fill="var(--color-ash)" fontSize={11}>
+          coarse detail
+        </text>
+        <text x={380} y={225} textAnchor="end" fill="var(--color-ash)" fontSize={11}>
+          fine detail (line pairs per mm)
+        </text>
+        <text x={34} y={24} textAnchor="end" fill="var(--color-ash)" fontSize={11}>
+          100%
+        </text>
+        <text x={34} y={204} textAnchor="end" fill="var(--color-ash)" fontSize={11}>
+          0
+        </text>
+        <path d={curve} fill="none" stroke="var(--color-screen)" strokeWidth={2} />
+        <line x1={40} y1={Y(c)} x2={X(f)} y2={Y(c)} stroke="var(--color-lamp)" strokeDasharray="4 4" />
+        <line x1={X(f)} y1={Y(c)} x2={X(f)} y2={200} stroke="var(--color-lamp)" strokeDasharray="4 4" />
+        <circle cx={X(f)} cy={Y(c)} r={5} fill="var(--color-lamp)" />
+        <text x={X(f) + 8} y={Y(c) - 8} fill="var(--color-lamp)" fontSize={12} className="figure">
+          {Math.round(f)} lp/mm
+        </text>
+      </svg>
+    </aside>
+  )
+}
+
 export default function Pixels() {
   const [d, setD] = useState(0.8)
   const p2k = pixelsPerDegree(2048, d)
@@ -68,15 +138,6 @@ export default function Pixels() {
           The 20/20 benchmark is about 60 pixels per degree, and a 2025 lab study put the eye&rsquo;s limit nearer 94
           <Ev k="independent" s="acuity" />. That study used displays, not cinemas.
         </p>
-        <aside className="panel mt-8">
-          <h3 className="display h-sub">And film?</h3>
-          <p className="body mt-3">
-            Film has no pixels. Detail fades gradually as it gets finer, measured as a curve (MTF)
-            <Ev k="claim" s="kodak" />, so any &ldquo;K&rdquo; number depends on where you draw the line. IMAX&rsquo;s
-            &ldquo;14K to 16K per color&rdquo; for 15/70 is a manufacturer claim, reported second-hand
-            <Ev k="claim" s="ymcinema16k" />.
-          </p>
-        </aside>
       </div>
 
       <div className="panel">
@@ -95,6 +156,7 @@ export default function Pixels() {
           <p className="body mt-2">{verdict}</p>
         </div>
       </div>
+      <FilmK />
     </section>
   )
 }

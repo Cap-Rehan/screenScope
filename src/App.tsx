@@ -7,6 +7,9 @@ import Frame from './sections/Frame'
 import Imax from './sections/Imax'
 import Films from './sections/Films'
 import Pixels from './sections/Pixels'
+import Light from './sections/Light'
+import Colour from './sections/Colour'
+import Scale from './sections/Scale'
 import Sound from './sections/Sound'
 import Formats from './sections/Formats'
 import Takeaway from './sections/Takeaway'
@@ -36,7 +39,10 @@ export default function App() {
         <Imax />
         <Films />
         <Pixels />
+        <Light />
+        <Colour />
         <Sound />
+        <Scale />
         <Formats />
         <Takeaway />
         <Sources />

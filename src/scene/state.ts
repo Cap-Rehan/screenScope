@@ -13,6 +13,8 @@ export const stage = {
   frameRatio: 1.9,
   beams: 1,
   ignite: 0,
+  /** Screen brightness set by the light demo, 0..1 */
+  brightness: 1,
   orb: { x: 0.5, y: 0.45 } as Point,
   soundMode: 'objects' as Mode,
   speakerCount: 32,
@@ -67,6 +69,13 @@ export function shotFor(name: string | undefined, s: Stage, aspect: number): Sho
       return { ...fit(s, aspect), light: 1, image: 1, seats: 0, speakers: 0 }
     case 'pixels':
       return { pos: [9, 4.6, 31], look: [-2, 5, 0], light: 0.3, image: 1, seats: 1, speakers: 0 }
+    case 'light':
+      return { pos: [0, 7.5, 31], look: [-7, 8, 0], light: 0.15 + 0.85 * s.brightness, image: 1, seats: 1, speakers: 0 }
+    case 'colour':
+      return { pos: [-10, 5, 30], look: [2, 8, 0], light: 0.3, image: 1, seats: 1, speakers: 0 }
+    case 'scale':
+      // At the foot of the screen, beside the person, looking up.
+      return { pos: [9.6, 1.4, 6.5], look: [1, 10, 0], light: aspect < 0.8 ? 0.35 : 1, image: 1, seats: 1, speakers: 0 }
     case 'sound':
       return { pos: [0, 66, 22], look: [0, 0, 17], light: 0.4, image: 1, seats: 1, speakers: 1 }
     case 'formats':
