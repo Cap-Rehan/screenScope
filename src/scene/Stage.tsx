@@ -56,6 +56,8 @@ function Theater({ src }: { src: string }) {
   const { camera, size } = useThree()
   const picture = useLoader(THREE.TextureLoader, src)
   picture.colorSpace = THREE.SRGBColorSpace
+  // Up close (the pixels dive) show the photo's real pixels as hard squares, not a blur.
+  picture.magFilter = THREE.NearestFilter
 
   // Damped values the scene actually renders.
   const live = useRef({ guides: 0, personScale: 1, ratio: stage.screenRatio, frame: stage.frameRatio, beams: stage.beams, shot: shotFor('hook', stage, 1), look: new THREE.Vector3(0, 8.5, 0) })

@@ -1,7 +1,10 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { useWhileActive } from '../lib/hooks'
+import { stage, DIVE_U, DIVE_V } from '../scene/state'
 import { Ev } from '../components/Ev'
 import { cutoffFrequency, impliedK, KODAK_MTF, MTF_FREQS, pixelsPerDegree, viewAngleDeg, type Layer } from '../lib/geometry'
-import { Seg, pct } from '../components/ui'
+import { Seg, pct, useEnv } from '../components/ui'
 
 const W = 200 // screen width in SVG units
 const MAX_PPD = 110
@@ -135,7 +138,75 @@ function FilmK() {
   )
 }
 
+/** Scroll-driven walk from the seats up to the screen until the photo's own pixels show. */
+function Dive() {
+  const track = useRef<HTMLDivElement>(null)
+  const { webgl, reduced, still } = useEnv()
+  const [p, setP] = useState(0)
+
+  useEffect(() => {
+    const st = ScrollTrigger.create({
+      trigger: track.current,
+      start: 'top top',
+      end: 'bottom bottom',
+      onUpdate: (self) => setP(self.progress),
+    })
+    return () => {
+      st.kill()
+      stage.dive = 0
+    }
+  }, [])
+
+  // In over the first 60% of the track, hold, then back out so the next part reads over the seats again.
+  const raw = p < 0.6 ? p / 0.6 : p < 0.8 ? 1 : 1 - (p - 0.8) / 0.2
+  const dive = reduced ? (raw > 0.5 ? 1 : 0) : raw
+  useEffect(() => {
+    stage.dive = dive
+  }, [dive])
+  const close = dive > 0.85
+
+  return (
+    <div ref={track} style={{ height: '260svh' }}>
+      <div className="flex h-svh flex-col justify-end gap-6 px-[clamp(1rem,4vw,4rem)] pb-[12svh]" style={{ position: 'sticky', top: 0 }}>
+        {!webgl && (
+          <div
+            aria-hidden="true"
+            className="mx-auto aspect-[1.9] w-[min(90vw,44rem)] bg-no-repeat"
+            style={{
+              backgroundImage: `url(${still.src})`,
+              backgroundSize: `${100 + dive * 3900}% auto`,
+              backgroundPosition: `${DIVE_U * 100}% ${DIVE_V * 100}%`,
+              imageRendering: 'pixelated',
+            }}
+          />
+        )}
+        <div className="panel max-w-[40rem] self-start" aria-live="polite">
+          {close ? (
+            <p className="lede max-w-[40ch]">
+              This photo is {still.width.toLocaleString()} pixels wide, about {Math.round(still.width / 1000)}K. Up
+              close, each pixel is a hard-edged square. Back in your seat they blur together. So how far back is far
+              enough?
+            </p>
+          ) : (
+            <p className="display h-sub">Walk up to the screen.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Pixels() {
+  const section = useRef<HTMLElement>(null)
+  // The dive lands on a 1.90 picture, the shape of most IMAX screens.
+  useWhileActive(
+    section,
+    () => {
+      stage.screenRatio = stage.frameRatio = 1.9
+      stage.beams = 1
+    },
+    [],
+  )
   const [d, setD] = useState(0.8)
   const p2k = pixelsPerDegree(2048, d)
   const p4k = pixelsPerDegree(4096, d)
@@ -147,7 +218,9 @@ export default function Pixels() {
         : 'This close, both fall below 60 pixels per degree. Your eye could resolve more than the projector gives.'
 
   return (
-    <section data-shot="pixels" className="scene grid items-center gap-12 lg:grid-cols-[1.1fr_1fr]" aria-labelledby="pixels-title">
+    <section ref={section} data-shot="pixels" aria-labelledby="pixels-title">
+      <Dive />
+      <div className="scene grid items-center gap-12 lg:grid-cols-[1.1fr_1fr]">
       <div className="scrim">
         <h2 id="pixels-title" className="display h-section max-w-[13ch]">
           Pixels only matter until your eye runs out.
@@ -181,6 +254,7 @@ export default function Pixels() {
         </div>
       </div>
       <FilmK />
+      </div>
     </section>
   )
 }

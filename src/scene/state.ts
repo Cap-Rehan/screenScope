@@ -17,6 +17,8 @@ export const stage = {
   ignite: 0,
   /** Screen brightness set by the light demo, 0..1 */
   brightness: 1,
+  /** Pixels section fly-in, 0 = seats, 1 = nose against the screen */
+  dive: 0,
   /** Real-world width of the screen in the scale section, in metres; the scene's screen is always SCREEN_W units. */
   screenMetres: 20,
   orb: { x: 0.5, y: 0.45 } as Point,
@@ -60,6 +62,39 @@ function fit(s: Stage, aspect: number): Pick<Shot, 'pos' | 'look'> {
   return { pos: [shiftX, y, d], look: [shiftX, y, 0] }
 }
 
+const lerp = (a: number, b: number, k: number) => a + (b - a) * k
+
+// Where the dive lands, as a fraction of the 1.43 master photo: the edge of the rocket's orange core stage against the night sky.
+export const DIVE_U = 0.607
+export const DIVE_V = 0.19
+// Distance from the screen at the end of the dive; phones see a narrower slice, so they stop further back.
+const diveEnd = (aspect: number) => (aspect < 0.8 ? 2.2 : 1)
+
+/** World x, y of the dive target on the screen, given the current crop of the master photo. */
+function divePoint(s: Stage): [number, number] {
+  const crop = Math.min(1, 1.43 / s.frameRatio)
+  const v = (DIVE_V - (1 - crop) / 2) / crop
+  return [(DIVE_U - 0.5) * SCREEN_W, screenCentreY(s.screenRatio) + (0.5 - v) * screenHeight(s.screenRatio)]
+}
+
+const SEATS_VIEW: Shot = { pos: [9, 4.6, 31], look: [-2, 5, 0], light: 0.3, image: 1, seats: 1, speakers: 0 }
+
+/** From the seats to the screen surface; distance shrinks exponentially so the last metre isn't rushed. */
+function dive(s: Stage, aspect: number): Shot {
+  const k = s.dive * s.dive * (3 - 2 * s.dive)
+  if (!k) return SEATS_VIEW
+  const [x, y] = divePoint(s)
+  const z = SEATS_VIEW.pos[2] * (diveEnd(aspect) / SEATS_VIEW.pos[2]) ** s.dive
+  return {
+    pos: [lerp(SEATS_VIEW.pos[0], x, k), lerp(SEATS_VIEW.pos[1], y, k), z],
+    look: [lerp(SEATS_VIEW.look[0], x, k), lerp(SEATS_VIEW.look[1], y, k), 0],
+    light: lerp(0.3, 0.85, k),
+    image: 1,
+    seats: 1 - k,
+    speakers: 0,
+  }
+}
+
 const HOOK: Shot = { pos: [0, 9.5, 36], look: [0, 8.5, 0], light: 1, image: 0, seats: 1, speakers: 0 }
 // On wide viewports the opening screen sits right of the headline.
 // On tall phones it sits above the headline, seen from high in the back rows.
@@ -72,7 +107,7 @@ export function shotFor(name: string | undefined, s: Stage, aspect: number): Sho
     case 'imax':
       return { ...fit(s, aspect), light: 1, image: 1, seats: 0, speakers: 0 }
     case 'pixels':
-      return { pos: [9, 4.6, 31], look: [-2, 5, 0], light: 0.3, image: 1, seats: 1, speakers: 0 }
+      return dive(s, aspect)
     case 'light':
       return { pos: [0, 7.5, 31], look: [-7, 8, 0], light: 0.15 + 0.85 * s.brightness, image: 1, seats: 1, speakers: 0 }
     case 'colour':

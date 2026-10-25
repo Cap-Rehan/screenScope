@@ -1,8 +1,8 @@
 import { createContext, useContext, type ReactNode } from 'react'
 import { fitFrame, MASTER_RATIO } from '../lib/geometry'
 
-export type Env = { webgl: boolean; reduced: boolean; still: { src: string; local: boolean } }
-export const EnvContext = createContext<Env>({ webgl: true, reduced: false, still: { src: '', local: false } })
+export type Env = { webgl: boolean; reduced: boolean; still: { src: string; local: boolean; width: number } }
+export const EnvContext = createContext<Env>({ webgl: true, reduced: false, still: { src: '', local: false, width: 0 } })
 export const useEnv = () => useContext(EnvContext)
 
 /** Segmented control: a row of pressable chips. */

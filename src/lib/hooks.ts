@@ -50,14 +50,15 @@ export function hasWebGL() {
 const BASE = import.meta.env.BASE_URL
 const LOCAL_STILL = `${BASE}stills/master.jpg`
 // Phones get the smaller copy of the NASA frame.
-const DEFAULT_STILL = `${BASE}media/launch-${window.innerWidth < 800 ? 1000 : 2000}.jpg`
+const DEFAULT_WIDTH = window.innerWidth < 800 ? 1000 : 2000
+const DEFAULT_STILL = `${BASE}media/launch-${DEFAULT_WIDTH}.jpg`
 
 /** Uses a still you dropped into public/stills/ if there is one, otherwise the NASA photo. */
 export function useMasterImage() {
-  const [still, setStill] = useState({ src: DEFAULT_STILL, local: false })
+  const [still, setStill] = useState({ src: DEFAULT_STILL, local: false, width: DEFAULT_WIDTH })
   useEffect(() => {
     const img = new Image()
-    img.onload = () => setStill({ src: LOCAL_STILL, local: true })
+    img.onload = () => setStill({ src: LOCAL_STILL, local: true, width: img.naturalWidth })
     img.src = LOCAL_STILL
   }, [])
   return still
