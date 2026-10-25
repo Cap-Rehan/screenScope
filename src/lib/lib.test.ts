@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { cutoffFrequency, extraArea, fitFrame, impliedK, masterShown, mtf, pixelsPerDegree, viewAngleDeg } from './geometry'
 import { gains, makeSpeakers, nearestGroup } from './sound'
+import { LISTENER, renderGains, speakerPosition } from './audio'
 
 describe('aspect ratio maths', () => {
   it('matches IMAX\'s "up to 26%" for 2.39 -> 1.90 at the same width', () => {
@@ -62,5 +63,17 @@ describe('speakers', () => {
     const ob = gains(sp, p, 'objects')
     expect(ob.filter((g) => g > 0)).toHaveLength(3)
     expect(Math.hypot(...ob)).toBeCloseTo(1, 6)
+  })
+})
+
+describe('audio rendering', () => {
+  it('keeps total power at 1 in both modes', () => {
+    const sp = makeSpeakers(32)
+    for (const mode of ['channels', 'objects'] as const) expect(Math.hypot(...renderGains(sp, { x: 0.05, y: 0.5 }, mode))).toBeCloseTo(1, 6)
+  })
+  it('puts the screen ahead of the listener and the back wall behind', () => {
+    expect(speakerPosition({ x: LISTENER.x, y: 0 }).z).toBeLessThan(0)
+    expect(speakerPosition({ x: LISTENER.x, y: 1 }).z).toBeGreaterThan(0)
+    expect(speakerPosition({ x: 0, y: 0.5 }).x).toBeLessThan(0)
   })
 })

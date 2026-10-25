@@ -24,6 +24,8 @@ export const stage = {
   orb: { x: 0.5, y: 0.45 } as Point,
   soundMode: 'objects' as Mode,
   speakerCount: 32,
+  /** Live audio level from the sound demo, 0..1; 1 when silent so the speakers stay lit. */
+  level: 1,
   reduced: false,
 }
 

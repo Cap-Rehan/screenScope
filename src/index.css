@@ -381,7 +381,34 @@ input[type='range'] {
   border: 0;
 }
 
+/* Sound demo: rings spreading from speakers that are playing */
+.ripple {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ripple 1.2s ease-out infinite;
+}
+@keyframes ripple {
+  from {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+  to {
+    transform: scale(3.2);
+    opacity: 0;
+  }
+}
+.orb-halo {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(calc(1 + var(--level, 0) * 0.5));
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .ripple {
+    animation: none;
+    opacity: 0;
+  }
+
   *,
   *::before,
   *::after {

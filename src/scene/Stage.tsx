@@ -234,13 +234,15 @@ function Theater({ src }: { src: string }) {
       sp.instanceMatrix.needsUpdate = true
     }
     const g = gains(tmp.speakers, stage.orb, stage.soundMode)
-    g.forEach((gain, n) => sp.setColorAt(n, tmp.c.setRGB(0.12, 0.1, 0.09).lerp(LAMP, gain * L.shot.speakers)))
+    // Lit speakers pulse with the demo's live audio level (1 when silent).
+    const pulse = 0.45 + 0.55 * stage.level
+    g.forEach((gain, n) => sp.setColorAt(n, tmp.c.setRGB(0.12, 0.1, 0.09).lerp(LAMP, gain * L.shot.speakers * pulse)))
     if (sp.instanceColor) sp.instanceColor.needsUpdate = true
     sp.visible = L.shot.speakers > 0.02
     const orb = refs.orb.current!
     orb.visible = sp.visible
     orb.position.set((stage.orb.x - 0.5) * ROOM_W * 0.9, 6, 0.6 + stage.orb.y * (ROOM_D - 3))
-    orb.scale.setScalar(L.shot.speakers)
+    orb.scale.setScalar(L.shot.speakers * (0.8 + 0.4 * stage.level))
 
     // Dust: drifts upward; brighter near the beam axis.
     const pts = dust.attributes.position as THREE.BufferAttribute
