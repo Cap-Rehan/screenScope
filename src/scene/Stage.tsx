@@ -3,6 +3,7 @@ import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { fitFrame, MASTER_RATIO } from '../lib/geometry'
 import { gains, makeSpeakers } from '../lib/sound'
+import { GAMUTS, paintLocus } from '../lib/colour'
 import { FOV, SCREEN_W, screenCentreY, screenHeight, shotFor, stage, type Shot } from './state'
 
 const LAMP = new THREE.Color('#FFA531')
@@ -36,7 +37,39 @@ function lerpShot(a: Shot, b: Shot, k: number): Shot {
     image: l(a.image, b.image),
     seats: l(a.seats, b.seats),
     speakers: l(a.speakers, b.speakers),
+    chart: l(a.chart ?? 0, b.chart ?? 0),
   }
+}
+
+/** The colour chart as a 1.90:1 screen image: the visible-colour horseshoe and the three gamut triangles. */
+function chartTexture() {
+  const c = document.createElement('canvas')
+  c.width = 1024
+  c.height = 540
+  const S = 555
+  const map = ([x, y]: [number, number]): [number, number] => [290 + x * S, 520 - y * S]
+  const ctx = paintLocus(c, map, (px, py) => [(px - 290) / S, (520 - py) / S])
+  ctx.globalCompositeOperation = 'destination-over'
+  ctx.fillStyle = '#000'
+  ctx.fillRect(0, 0, c.width, c.height)
+  ctx.globalCompositeOperation = 'source-over'
+  ctx.lineWidth = 4
+  ;(
+    [
+      ['rec709', '#8E867B'],
+      ['p3', '#FFA531'],
+      ['rec2020', '#F3EEE4'],
+    ] as const
+  ).forEach(([key, colour]) => {
+    ctx.beginPath()
+    GAMUTS[key].forEach((p, i) => ctx[i ? 'lineTo' : 'moveTo'](...map(p)))
+    ctx.closePath()
+    ctx.strokeStyle = colour
+    ctx.stroke()
+  })
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
 }
 
 function radialTexture() {
@@ -60,12 +93,13 @@ function Theater({ src }: { src: string }) {
   picture.magFilter = THREE.NearestFilter
 
   // Damped values the scene actually renders.
-  const live = useRef({ guides: 0, personScale: 1, ratio: stage.screenRatio, frame: stage.frameRatio, beams: stage.beams, shot: shotFor('hook', stage, 1), look: new THREE.Vector3(0, 8.5, 0) })
+  const live = useRef({ chart: 0, guides: 0, personScale: 1, ratio: stage.screenRatio, frame: stage.frameRatio, beams: stage.beams, shot: shotFor('hook', stage, 1), look: new THREE.Vector3(0, 8.5, 0) })
 
   const refs = {
     surface: useRef<THREE.Mesh>(null),
     image: useRef<THREE.Mesh>(null),
     blank: useRef<THREE.Mesh>(null),
+    chart: useRef<THREE.Mesh>(null),
     glow: useRef<THREE.Mesh>(null),
     seats: useRef<THREE.InstancedMesh>(null),
     speakers: useRef<THREE.InstancedMesh>(null),
@@ -77,6 +111,8 @@ function Theater({ src }: { src: string }) {
   }
 
   const glowTex = useMemo(radialTexture, [])
+  // Painting the chart takes a moment, so only once.
+  const chartTex = useMemo(chartTexture, [])
   const unitRect = useMemo(
     () => new THREE.BufferGeometry().setFromPoints([[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]].map(([x, y]) => new THREE.Vector3(x, y, 0))),
     [],
@@ -148,6 +184,7 @@ function Theater({ src }: { src: string }) {
     L.look.set(damp(L.look.x, target.look[0], ck, dt), damp(L.look.y, target.look[1], ck, dt), damp(L.look.z, target.look[2], ck, dt))
     camera.lookAt(L.look)
     for (const key of ['light', 'image', 'seats', 'speakers'] as const) L.shot[key] = damp(L.shot[key], target[key], ck, dt)
+    L.chart = damp(L.chart, target.chart ?? 0, ck, dt)
 
     const light = L.shot.light * stage.ignite
     const H = screenHeight(L.ratio)
@@ -169,6 +206,13 @@ function Theater({ src }: { src: string }) {
     picture.offset.set(0, (1 - rep) / 2)
     imageMat.color.setScalar(light)
     imageMat.opacity = L.shot.image
+    const chart = refs.chart.current!
+    chart.visible = L.chart > 0.01
+    chart.scale.set(iw, ih, 1)
+    chart.position.y = cy
+    const chartMat = chart.material as THREE.MeshBasicMaterial
+    chartMat.opacity = L.chart
+    chartMat.color.setScalar(light)
     const blankMat = refs.blank.current!.material as THREE.MeshBasicMaterial
     blankMat.color.copy(SCREEN_WHITE).multiplyScalar(0.92 * light)
     blankMat.opacity = 1 - L.shot.image
@@ -302,6 +346,10 @@ function Theater({ src }: { src: string }) {
       </mesh>
       <mesh ref={refs.image} position={[0, 10, 0.02]} material={imageMat}>
         <planeGeometry />
+      </mesh>
+      <mesh ref={refs.chart} position={[0, 10, 0.045]} visible={false}>
+        <planeGeometry />
+        <meshBasicMaterial map={chartTex} transparent />
       </mesh>
       <mesh ref={refs.blank} position={[0, 10, 0.03]}>
         <planeGeometry />

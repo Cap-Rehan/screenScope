@@ -45,6 +45,8 @@ export type Shot = {
   image: number
   seats: number
   speakers: number
+  /** 0..1: the screen shows the colour chart instead of the picture */
+  chart?: number
 }
 
 export const FOV = 40
@@ -113,7 +115,7 @@ export function shotFor(name: string | undefined, s: Stage, aspect: number): Sho
     case 'light':
       return { pos: [0, 7.5, 31], look: [-7, 8, 0], light: 0.15 + 0.85 * s.brightness, image: 1, seats: 1, speakers: 0 }
     case 'colour':
-      return { pos: [-10, 5, 30], look: [2, 8, 0], light: 0.3, image: 1, seats: 1, speakers: 0 }
+      return { ...fit(s, aspect), light: 0.9, image: 1, seats: 0, speakers: 0, chart: 1 }
     case 'scale':
       // At the foot of the screen, beside the person, looking up.
       return { pos: [9.6, 1.4, 6.5], look: [1, 10, 0], light: aspect < 0.8 ? 0.35 : 1, image: 1, seats: 1, speakers: 0 }

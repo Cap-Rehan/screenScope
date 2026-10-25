@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { cutoffFrequency, extraArea, fitFrame, impliedK, masterShown, mtf, pixelsPerDegree, viewAngleDeg } from './geometry'
 import { gains, makeSpeakers, nearestGroup } from './sound'
 import { LISTENER, renderGains, speakerPosition } from './audio'
+import { DCI_WHITE, GAMUTS, inGamut, visible, xyToDisplayRGB } from './colour'
 
 describe('aspect ratio maths', () => {
   it('matches IMAX\'s "up to 26%" for 2.39 -> 1.90 at the same width', () => {
@@ -75,5 +76,25 @@ describe('audio rendering', () => {
     expect(speakerPosition({ x: LISTENER.x, y: 0 }).z).toBeLessThan(0)
     expect(speakerPosition({ x: LISTENER.x, y: 1 }).z).toBeGreaterThan(0)
     expect(speakerPosition({ x: 0, y: 0.5 }).x).toBeLessThan(0)
+  })
+})
+
+describe('colour', () => {
+  it('white is inside every gamut and visible', () => {
+    for (const g of Object.values(GAMUTS)) expect(inGamut(DCI_WHITE, g)).toBe(true)
+    expect(visible(DCI_WHITE)).toBe(true)
+  })
+  it('the Rec. 2020 green primary is outside P3 and Rec. 709', () => {
+    const green = GAMUTS.rec2020[1]
+    expect(inGamut([green[0] + 0.001, green[1] - 0.01], GAMUTS.rec2020)).toBe(true)
+    expect(inGamut(green, GAMUTS.p3)).toBe(false)
+    expect(inGamut(green, GAMUTS.rec709)).toBe(false)
+  })
+  it('points outside the horseshoe are not visible colours', () => {
+    expect(visible([0.05, 0.05])).toBe(false)
+    expect(visible([0.7, 0.6])).toBe(false)
+  })
+  it('the sRGB red primary maps to pure red', () => {
+    expect(xyToDisplayRGB([0.64, 0.33])).toEqual([255, 0, 0])
   })
 })

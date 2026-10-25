@@ -26,3 +26,63 @@ export const GAMUTS = {
 
 /** DCI white point (SMPTE ST 431-1 / ST 2113). */
 export const DCI_WHITE: XY = [0.314, 0.351]
+
+/** Is (x, y) inside the triangle of primaries? Same-side test on all three edges. */
+export function inGamut([x, y]: XY, tri: XY[]): boolean {
+  const side = (a: XY, b: XY) => (b[0] - a[0]) * (y - a[1]) - (b[1] - a[1]) * (x - a[0])
+  const s = [side(tri[0], tri[1]), side(tri[1], tri[2]), side(tri[2], tri[0])]
+  return s.every((v) => v >= 0) || s.every((v) => v <= 0)
+}
+
+/** Is (x, y) a colour the eye can see? Inside the locus, closed by the line of purples. */
+export function visible([x, y]: XY): boolean {
+  let inside = false
+  for (let i = 0, j = LOCUS.length - 1; i < LOCUS.length; j = i++) {
+    const [xi, yi] = LOCUS[i]
+    const [xj, yj] = LOCUS[j]
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside
+  }
+  return inside
+}
+
+/** CIE XYZ for chromaticity (x, y) at luminance Y. */
+export function xyToXYZ([x, y]: XY, Y = 1): [number, number, number] {
+  return [(x / y) * Y, Y, ((1 - x - y) / y) * Y]
+}
+
+/**
+ * Displayable sRGB (0..255) for a chromaticity: negative channels clipped, brightest channel scaled to full.
+ * Colours outside sRGB come out as the nearest your screen can show, not the real colour.
+ */
+export function xyToDisplayRGB(xy: XY): [number, number, number] {
+  const [X, Y, Z] = xyToXYZ(xy)
+  const lin = [
+    3.2406 * X - 1.5372 * Y - 0.4986 * Z,
+    -0.9689 * X + 1.8758 * Y + 0.0415 * Z,
+    0.0557 * X - 0.204 * Y + 1.057 * Z,
+  ].map((v) => Math.max(0, v))
+  const max = Math.max(...lin) || 1
+  return lin.map((v) => {
+    const c = v / max
+    return Math.round(255 * (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055))
+  }) as [number, number, number]
+}
+
+/** Paint the visible-colour horseshoe into a canvas; `map` turns xy into canvas pixels. */
+export function paintLocus(canvas: HTMLCanvasElement, map: (xy: XY) => [number, number], unmap: (px: number, py: number) => XY) {
+  const ctx = canvas.getContext('2d')!
+  const img = ctx.createImageData(canvas.width, canvas.height)
+  for (let py = 0; py < canvas.height; py++) {
+    for (let px = 0; px < canvas.width; px++) {
+      const xy = unmap(px, py)
+      if (xy[1] <= 0 || !visible(xy)) continue
+      const [r, g, b] = xyToDisplayRGB(xy)
+      img.data.set([r, g, b, 255], (py * canvas.width + px) * 4)
+    }
+  }
+  ctx.putImageData(img, 0, 0)
+  ctx.beginPath()
+  LOCUS.forEach((p, i) => ctx[i ? 'lineTo' : 'moveTo'](...map(p)))
+  ctx.closePath()
+  return ctx
+}
