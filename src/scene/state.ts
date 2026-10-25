@@ -12,9 +12,13 @@ export const stage = {
   screenRatio: 1.9,
   frameRatio: 1.9,
   beams: 1,
+  /** Show 1.90 and 2.39 frame lines over the 1.43 picture (frame section). */
+  guides: false,
   ignite: 0,
   /** Screen brightness set by the light demo, 0..1 */
   brightness: 1,
+  /** Real-world width of the screen in the scale section, in metres; the scene's screen is always SCREEN_W units. */
+  screenMetres: 20,
   orb: { x: 0.5, y: 0.45 } as Point,
   soundMode: 'objects' as Mode,
   speakerCount: 32,

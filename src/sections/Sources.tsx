@@ -6,7 +6,8 @@ const UNVERIFIED = [
   'IMAX sound channel counts, and whether any IMAX theatre plays Dolby Atmos natively.',
   'Independent measurements of IMAX or Dolby brightness and contrast in real auditoriums. The figures shown are company statements.',
   'Any fixed pixel equivalent for 15/70 film. "16K" and similar figures are not measurements.',
-  'How 2.39 and 1.85 releases are handled on each IMAX system. The frame demo shows geometry only.',
+  'Where each release crops its 1.90 and 2.39 versions from the taller frame. Filmmakers say what they protected, not where the cut falls, so the frame demo cuts from the centre.',
+  'Film detail finer than 80 cycles per millimetre. Kodak\u2019s published curve stops there; the stocks used on specific IMAX films weren\u2019t checked.',
 ]
 
 export default function Sources() {

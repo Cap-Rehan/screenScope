@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Ev } from '../components/Ev'
-import { cutoffFrequency, impliedK, mtf, pixelsPerDegree, viewAngleDeg } from '../lib/geometry'
+import { cutoffFrequency, impliedK, KODAK_MTF, MTF_FREQS, pixelsPerDegree, viewAngleDeg, type Layer } from '../lib/geometry'
 import { Seg, pct } from '../components/ui'
 
 const W = 200 // screen width in SVG units
@@ -43,19 +43,24 @@ function Bar({ label, value }: { label: string; value: number }) {
 }
 
 const FRAME_MM = 69.6
-const CUTOFFS = [0.5, 0.2, 0.1, 0.05, 0.03] as const
-const F_MAX = 140
+const CUTOFFS = [0.8, 0.5, 0.4, 0.3, 0.2] as const
+const LAYERS: { key: Layer; name: string; stroke: string; dash?: string }[] = [
+  { key: 'red', name: 'Red layer', stroke: 'var(--color-lamp)' },
+  { key: 'green', name: 'Green layer', stroke: 'var(--color-screen)' },
+  { key: 'blue', name: 'Blue layer', stroke: 'var(--color-ash)', dash: '5 4' },
+]
+const F_LO = 2.5
+const F_HI = 160
+const CHART_END = MTF_FREQS[MTF_FREQS.length - 1]
 
-/** Same illustrative film curve, different "K" depending on where you cut it. */
+/** Kodak's measured curves: the same negative gives a different "K" depending on where you cut it. */
 function FilmK() {
-  const [c, setC] = useState<(typeof CUTOFFS)[number]>(0.1)
-  const f = cutoffFrequency(c)
-  const X = (v: number) => 40 + (v / F_MAX) * 340
-  const Y = (v: number) => 20 + (1 - v) * 180
-  const curve = Array.from({ length: 71 }, (_, i) => {
-    const v = (i / 70) * F_MAX
-    return `${i ? 'L' : 'M'}${X(v).toFixed(1)} ${Y(mtf(v)).toFixed(1)}`
-  }).join(' ')
+  const [c, setC] = useState<(typeof CUTOFFS)[number]>(0.5)
+  const X = (f: number) => 40 + (Math.log(f / F_LO) / Math.log(F_HI / F_LO)) * 340
+  const Y = (v: number) => 200 - (v / 1.2) * 180
+  const curve = (key: Layer) =>
+    MTF_FREQS.map((f, i) => `${i ? 'L' : 'M'}${X(f).toFixed(1)} ${Y(KODAK_MTF[key][i]).toFixed(1)}`).join(' ')
+  const maxK = impliedK(CHART_END, FRAME_MM).toFixed(1)
 
   return (
     <aside className="panel grid gap-8 lg:col-span-2 lg:grid-cols-[1fr_1.1fr] lg:items-center" aria-labelledby="film-title">
@@ -64,48 +69,67 @@ function FilmK() {
           And film?
         </h3>
         <p className="body mt-3">
-          Film has no pixels. Detail fades gradually as it gets finer, measured as a curve (MTF)
-          <Ev k="claim" s="kodak" />, so any &ldquo;K&rdquo; number depends on where you draw the line. IMAX&rsquo;s
-          &ldquo;14K to 16K per color&rdquo; for 15/70 is a manufacturer claim, reported second-hand
+          Film has no pixels. Detail fades gradually as it gets finer, and Kodak publishes that fade as a curve for
+          each colour layer of its stock (MTF)
+          <Ev k="claim" s="kodak" />. Pick how much contrast still counts as &ldquo;detail&rdquo; and the same negative
+          gives a different &ldquo;K&rdquo;. For this stock, Kodak&rsquo;s chart stops at 80 cycles per millimetre, about{' '}
+          {maxK}K across a 15/70 frame. IMAX&rsquo;s &ldquo;14K to 16K per color&rdquo; describes detail finer than
+          that published curve shows
           <Ev k="claim" s="ymcinema16k" />.
         </p>
         <div className="mt-5">
           <Seg label="Count detail down to this much contrast" options={CUTOFFS} value={c} onChange={setC} format={pct} />
         </div>
         <dl className="readout mt-5" aria-live="polite">
-          <dt>
-            &ldquo;K&rdquo; across a 69.6 mm frame
-            <Ev k="estimate" />
-          </dt>
-          <dd className="figure">{impliedK(c, FRAME_MM).toFixed(1)}K</dd>
+          {LAYERS.map(({ key, name }) => {
+            const f = cutoffFrequency(key, c)
+            return (
+              <Fragment key={key}>
+                <dt>
+                  {name}, across a 69.6 mm frame
+                  <Ev k="estimate" />
+                </dt>
+                <dd className="figure">{f ? `${impliedK(f, FRAME_MM).toFixed(1)}K` : `>${maxK}K`}</dd>
+              </Fragment>
+            )
+          })}
         </dl>
         <p className="small mt-4">
-          An illustrative curve, not measured data for any film stock. It describes a camera negative; prints and
-          projection lose more.
+          &ldquo;&gt;{maxK}K&rdquo; means the layer is still above that contrast where Kodak&rsquo;s chart ends; how
+          far beyond isn&rsquo;t published. Curves are VISION3 500T 5219, read off Kodak&rsquo;s chart, for the camera
+          negative only. Lenses, prints and projection all lose more.
         </p>
       </div>
       <svg viewBox="0 0 400 240" className="w-full" aria-hidden="true">
+        <rect x={X(CHART_END)} y={20} width={380 - X(CHART_END)} height={180} fill="rgb(142 134 123 / 0.12)" />
+        <text x={(X(CHART_END) + 380) / 2} y={36} textAnchor="middle" fill="var(--color-ash)" fontSize={10}>
+          not charted
+        </text>
         <line x1={40} y1={200} x2={380} y2={200} stroke="var(--color-ash)" strokeOpacity={0.5} />
         <line x1={40} y1={20} x2={40} y2={200} stroke="var(--color-ash)" strokeOpacity={0.5} />
-        <text x={40} y={225} fill="var(--color-ash)" fontSize={11}>
-          coarse detail
+        {[5, 10, 20, 40, 80].map((f) => (
+          <text key={f} x={X(f)} y={216} textAnchor="middle" fill="var(--color-ash)" fontSize={11} className="figure">
+            {f}
+          </text>
+        ))}
+        <text x={380} y={234} textAnchor="end" fill="var(--color-ash)" fontSize={11}>
+          cycles per mm (finer detail →)
         </text>
-        <text x={380} y={225} textAnchor="end" fill="var(--color-ash)" fontSize={11}>
-          fine detail (line pairs per mm)
-        </text>
-        <text x={34} y={24} textAnchor="end" fill="var(--color-ash)" fontSize={11}>
-          100%
-        </text>
-        <text x={34} y={204} textAnchor="end" fill="var(--color-ash)" fontSize={11}>
-          0
-        </text>
-        <path d={curve} fill="none" stroke="var(--color-screen)" strokeWidth={2} />
-        <line x1={40} y1={Y(c)} x2={X(f)} y2={Y(c)} stroke="var(--color-lamp)" strokeDasharray="4 4" />
-        <line x1={X(f)} y1={Y(c)} x2={X(f)} y2={200} stroke="var(--color-lamp)" strokeDasharray="4 4" />
-        <circle cx={X(f)} cy={Y(c)} r={5} fill="var(--color-lamp)" />
-        <text x={X(f) + 8} y={Y(c) - 8} fill="var(--color-lamp)" fontSize={12} className="figure">
-          {Math.round(f)} lp/mm
-        </text>
+        {[0, 0.5, 1].map((v) => (
+          <text key={v} x={34} y={Y(v) + 4} textAnchor="end" fill="var(--color-ash)" fontSize={11}>
+            {v * 100}%
+          </text>
+        ))}
+        <line x1={40} y1={Y(c)} x2={380} y2={Y(c)} stroke="var(--color-lamp)" strokeOpacity={0.6} strokeDasharray="4 4" />
+        {LAYERS.map(({ key, stroke, dash }) => {
+          const f = cutoffFrequency(key, c)
+          return (
+            <g key={key}>
+              <path d={curve(key)} fill="none" stroke={stroke} strokeWidth={2} strokeDasharray={dash} />
+              {f && <circle cx={X(f)} cy={Y(c)} r={4.5} fill={stroke} />}
+            </g>
+          )
+        })}
       </svg>
     </aside>
   )

@@ -63,6 +63,29 @@ export const SOURCES = {
   kodak: {
     title: 'Kodak VISION3 500T 5219/7219 technical brochure (MTF chart)',
     url: 'https://www.kodak.com/content/products-brochures/motion-picture/KODAK-VISION3-500T-5219-7219-brochure.pdf',
+    note: 'Curves digitised from the published chart, which ends at 80 cycles/mm. The stock is also sold in 65 mm.',
+  },
+  asc: {
+    title: 'American Cinematographer: Expanding the View for Dune: Part Two (Jan 2025)',
+    url: 'https://theasc.com/articles/expanding-the-view-for-dune-part-two',
+    note: 'Says what was protected, not how each version was cropped.',
+  },
+  disney: {
+    title: 'Disney: IMAX Enhanced launches on Disney+ with Marvel titles (Nov 2021)',
+    url: 'https://press.disney.co.uk/news/imax-enhanced-to-launch-on-disney+-with-titles-from-the-marvel-cinematic-universe-in-imax-s-expanded-aspect-ratio',
+  },
+  slashfilmImax: {
+    title: 'SlashFilm: Filmed for IMAX vs Shot with IMAX (Jul 2026)',
+    url: 'https://www.slashfilm.com/2225704/filmed-for-imax-vs-shot-with-imax-difference/',
+  },
+  guinness: {
+    title: 'Guinness World Records: largest permanent cinema screen (overall)',
+    url: 'https://www.guinnessworldrecords.com/world-records/729198-largest-permanent-cinema-screen-overall',
+    note: 'IMAX Traumpalast Leonberg, 38.80 × 21.00 m, verified 6 Dec 2022.',
+  },
+  visitlondon: {
+    title: 'Visit London: BFI IMAX',
+    url: 'https://www.visitlondon.com/things-to-do/place/284861',
   },
   acuity: {
     title: 'Ashraf et al., resolution limit of the eye (arXiv 2410.06068; Nature Communications 2025)',

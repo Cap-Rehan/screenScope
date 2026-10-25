@@ -1,26 +1,79 @@
-import { useRef } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { Ev } from '../components/Ev'
 import { useWhileActive } from '../lib/hooks'
 import { stage } from '../scene/state'
 
-// Metres. Orientation (wider than tall) is assumed; the sources give sizes without saying which side is which.
-const SCREENS = [
-  { label: 'Largest: about 38 × 22 m', w: 38, h: 22 },
-  { label: 'Typical 15/70: about 24 × 18 m', w: 24, h: 18 },
-  // A tenth of the largest one's area, drawn at 1.90:1.
-  { label: 'Smallest IMAX-branded: about a tenth of the largest', w: Math.sqrt((38 * 22 * 1.9) / 10), h: Math.sqrt((38 * 22) / 10 / 1.9) },
+const LARGEST = { w: 38.8, h: 21 }
+const smallestArea = (LARGEST.w * LARGEST.h) / 10
+
+// Metres, width × height. Where a source gives two numbers without saying which is which, wider-than-tall is assumed.
+const VENUES: { id: string; name: string; w: number; h: number; note: ReactNode }[] = [
+  {
+    id: 'leonberg',
+    name: 'Leonberg, Germany',
+    w: LARGEST.w,
+    h: LARGEST.h,
+    note: (
+      <>
+        Measured at 38.80 × 21.00 m, the largest permanent cinema screen in the world
+        <Ev k="independent" s="guinness" />.
+      </>
+    ),
+  },
+  {
+    id: 'bfi',
+    name: 'BFI IMAX, London',
+    w: 26,
+    h: 20,
+    note: (
+      <>
+        About 26 m wide and more than 20 m high
+        <Ev k="independent" s="visitlondon" />.
+      </>
+    ),
+  },
+  {
+    id: 'typical',
+    name: 'Typical 15/70',
+    w: 24,
+    h: 18,
+    note: (
+      <>
+        About 18 by 24 m is the commonly quoted size for a 15/70 film screen
+        <Ev k="independent" s="wikipedia" />.
+      </>
+    ),
+  },
+  {
+    id: 'small',
+    name: 'Smallest IMAX-branded',
+    // A tenth of the largest one's area, drawn at 1.90:1.
+    w: Math.sqrt(smallestArea * 1.9),
+    h: Math.sqrt(smallestArea / 1.9),
+    note: (
+      <>
+        Roughly a tenth of the largest screen&rsquo;s area
+        <Ev k="independent" s="wikipedia" />. Drawn at 1.90:1; the real shape varies.
+      </>
+    ),
+  },
 ]
 const S = 10 // SVG units per metre
+const PERSON = 1.8
 
 export default function Scale() {
   const section = useRef<HTMLElement>(null)
+  const [id, setId] = useState('bfi')
+  const venue = VENUES.find((v) => v.id === id)!
+
   useWhileActive(
     section,
     () => {
-      stage.screenRatio = stage.frameRatio = 1.43
+      stage.screenRatio = stage.frameRatio = venue.w / venue.h
+      stage.screenMetres = venue.w
       stage.beams = 1
     },
-    [],
+    [venue],
   )
 
   return (
@@ -30,36 +83,48 @@ export default function Scale() {
           Same logo, very different wall.
         </h2>
         <p className="body mt-5">
-          Typical 15/70 IMAX screens measure about 18 by 24 metres; the largest, in Leonberg, Germany, about 38 by 22
-          <Ev k="independent" s="wikipedia" />. The smallest IMAX-branded screens have roughly a tenth of the largest
-          one&rsquo;s area
-          <Ev k="independent" s="wikipedia" />. How much of your view the screen fills depends on the room and your
-          seat as much as the logo.
+          IMAX-branded screens range from roughly a tenth of the largest one&rsquo;s area to a wall nearly 39 metres wide. How much of your view the
+          screen fills depends on the room and your seat as much as the logo. Pick a screen; the person standing at its
+          foot is 1.8 m tall.
         </p>
       </div>
       <figure className="panel mt-10 max-w-xl">
-        <svg viewBox={`0 0 ${38 * S + 20} ${22 * S + 30}`} className="w-full" role="img" aria-label="Three screen outlines drawn to scale beside a person 1.8 metres tall.">
-          {SCREENS.map((sc, i) => (
+        <div className="seg mb-5" role="radiogroup" aria-label="Screen">
+          {VENUES.map((v) => (
+            <button key={v.id} type="button" role="radio" aria-checked={v.id === id} className="chip" onClick={() => setId(v.id)}>
+              {v.name}
+            </button>
+          ))}
+        </div>
+        <svg
+          viewBox={`0 0 ${LARGEST.w * S + 20} ${LARGEST.h * S + 30}`}
+          className="w-full"
+          role="img"
+          aria-label={`Screen outlines drawn to scale beside a person 1.8 metres tall. ${venue.name} is highlighted.`}
+        >
+          {VENUES.map((v) => (
             <rect
-              key={sc.label}
+              key={v.id}
               x={10}
-              y={22 * S + 10 - sc.h * S}
-              width={sc.w * S}
-              height={sc.h * S}
-              fill={i === 2 ? 'rgb(255 165 49 / 0.25)' : 'none'}
-              stroke={i === 0 ? 'var(--color-ash)' : i === 1 ? 'var(--color-screen)' : 'var(--color-lamp)'}
+              y={LARGEST.h * S + 10 - v.h * S}
+              width={v.w * S}
+              height={v.h * S}
+              fill={v.id === id ? 'rgb(255 165 49 / 0.18)' : 'none'}
+              stroke={v.id === id ? 'var(--color-lamp)' : 'var(--color-ash)'}
+              strokeOpacity={v.id === id ? 1 : 0.5}
               strokeWidth={2}
-              strokeDasharray={i === 0 ? '6 5' : undefined}
             />
           ))}
-          <rect x={10 + 38 * S - 30} y={22 * S + 10 - 18} width={5} height={18} rx={2.5} fill="var(--color-screen)" />
-          <line x1={0} y1={22 * S + 10} x2={38 * S + 20} y2={22 * S + 10} stroke="var(--color-ash)" strokeOpacity={0.5} />
+          <rect x={10 + LARGEST.w * S - 30} y={LARGEST.h * S + 10 - PERSON * S} width={5} height={PERSON * S} rx={2.5} fill="var(--color-screen)" />
+          <line x1={0} y1={LARGEST.h * S + 10} x2={LARGEST.w * S + 20} y2={LARGEST.h * S + 10} stroke="var(--color-ash)" strokeOpacity={0.5} />
         </svg>
-        <figcaption className="mt-4 flex flex-wrap gap-x-6 gap-y-2 small">
-          <span>Dashed: the largest, about 38 × 22 m</span>
-          <span className="text-screen">White: typical 15/70, about 24 × 18 m</span>
-          <span className="text-lamp">Amber: a tenth of the largest</span>
-          <span>Bar on the right: a person, 1.8 m</span>
+        <figcaption className="mt-4" aria-live="polite">
+          <p className="display h-sub">
+            {venue.w.toFixed(1)} × {venue.h.toFixed(1)} m
+          </p>
+          <p className="body mt-2">
+            {venue.note} That&rsquo;s about {Math.round(venue.h / PERSON)} people stacked head to toe.
+          </p>
         </figcaption>
       </figure>
     </section>

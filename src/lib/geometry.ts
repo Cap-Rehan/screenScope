@@ -38,21 +38,41 @@ export function pixelsPerDegree(pixelsAcross: number, distance: number): number 
   return pixelsAcross / viewAngleDeg(distance)
 }
 
-// Illustrative film MTF: m(f) = exp(-(f/F0)^K). Not measured data for any stock;
-// F0 is chosen so 10% contrast lands near 80 lp/mm, a plausible order of magnitude.
-const F0 = 45.9
-const K = 1.5
+// Kodak VISION3 500T 5219 modulation transfer, read off the curves in Kodak's technical brochure
+// (digitised from the published chart; the same emulsion is sold in 65 mm). Response 1 = 100%.
+// Kodak's chart stops at 80 cycles/mm, so nothing finer is known from this source.
+export const MTF_FREQS = [2.5, 5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 80]
+export const KODAK_MTF = {
+  red: [1.04, 1.02, 0.98, 1.0, 0.89, 0.78, 0.68, 0.47, 0.34, 0.27, 0.22, 0.19],
+  green: [1.0, 1.05, 1.09, 1.09, 1.04, 0.97, 0.88, 0.68, 0.55, 0.47, 0.41, 0.37],
+  blue: [0.98, 0.98, 1.06, 1.13, 1.09, 1.02, 0.94, 0.8, 0.68, 0.55, 0.46, 0.4],
+}
+export type Layer = keyof typeof KODAK_MTF
 
-export function mtf(lpPerMm: number): number {
-  return Math.exp(-((lpPerMm / F0) ** K))
+/** Response at `f` cycles/mm, interpolated on a log frequency axis like Kodak's chart. */
+export function mtf(layer: Layer, f: number): number {
+  const r = KODAK_MTF[layer]
+  const i = Math.min(Math.max(MTF_FREQS.findIndex((x) => x >= f), 1), MTF_FREQS.length - 1)
+  const k = (Math.log(f) - Math.log(MTF_FREQS[i - 1])) / (Math.log(MTF_FREQS[i]) - Math.log(MTF_FREQS[i - 1]))
+  return r[i - 1] + (r[i] - r[i - 1]) * k
 }
 
-/** Spatial frequency (lp/mm) at which the illustrative curve falls to `contrast`. */
-export function cutoffFrequency(contrast: number): number {
-  return F0 * (-Math.log(contrast)) ** (1 / K)
+/**
+ * Finest detail (cycles/mm) still rendered at `contrast` or better, past the curve's peak.
+ * null when the layer is still above `contrast` where Kodak's chart ends.
+ */
+export function cutoffFrequency(layer: Layer, contrast: number): number | null {
+  const r = KODAK_MTF[layer]
+  for (let i = 1; i < r.length; i++) {
+    if (r[i] < contrast && r[i - 1] >= contrast) {
+      const k = (r[i - 1] - contrast) / (r[i - 1] - r[i])
+      return Math.exp(Math.log(MTF_FREQS[i - 1]) + k * (Math.log(MTF_FREQS[i]) - Math.log(MTF_FREQS[i - 1])))
+    }
+  }
+  return null
 }
 
-/** "K" figure a cutoff implies across a frame `widthMm` wide: 2 pixels per line pair, in thousands. */
-export function impliedK(contrast: number, widthMm: number): number {
-  return (2 * cutoffFrequency(contrast) * widthMm) / 1000
+/** "K" figure for `cyclesPerMm` across a frame `widthMm` wide: 2 pixels per cycle, in thousands. */
+export function impliedK(cyclesPerMm: number, widthMm: number): number {
+  return (2 * cyclesPerMm * widthMm) / 1000
 }

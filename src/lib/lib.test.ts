@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extraArea, fitFrame, impliedK, masterShown, mtf, cutoffFrequency, pixelsPerDegree, viewAngleDeg } from './geometry'
+import { cutoffFrequency, extraArea, fitFrame, impliedK, masterShown, mtf, pixelsPerDegree, viewAngleDeg } from './geometry'
 import { gains, makeSpeakers, nearestGroup } from './sound'
 
 describe('aspect ratio maths', () => {
@@ -33,13 +33,19 @@ describe('pixels per degree', () => {
   })
 })
 
-describe('illustrative film MTF', () => {
-  it('cutoff inverts the curve', () => {
-    for (const c of [0.5, 0.1, 0.03]) expect(mtf(cutoffFrequency(c))).toBeCloseTo(c, 6)
+describe('Kodak film MTF', () => {
+  it('cutoff lands on the curve', () => {
+    for (const c of [0.8, 0.5, 0.4]) {
+      const f = cutoffFrequency('green', c)!
+      expect(mtf('green', f)).toBeCloseTo(c, 1)
+    }
   })
-  it('same frame, different "K" depending on the cutoff', () => {
-    expect(impliedK(0.5, 69.6)).toBeLessThan(impliedK(0.1, 69.6))
-    expect(impliedK(0.1, 69.6)).toBeCloseTo(11.1, 0)
+  it('returns null past the end of Kodak\'s chart', () => {
+    expect(cutoffFrequency('green', 0.3)).toBeNull()
+    expect(cutoffFrequency('red', 0.3)).not.toBeNull()
+  })
+  it('80 cycles/mm across 69.6 mm is about 11K', () => {
+    expect(impliedK(80, 69.6)).toBeCloseTo(11.1, 1)
   })
 })
 

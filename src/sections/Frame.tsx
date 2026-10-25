@@ -9,7 +9,7 @@ import { stage } from '../scene/state'
 const RATIOS = [2.39, 1.9, 1.43] as const
 type R = (typeof RATIOS)[number]
 
-const STEPS: { frame: R; screen: R; text: ReactNode }[] = [
+const STEPS: { frame: R; screen: R; guides?: boolean; sequences?: boolean; text: ReactNode }[] = [
   {
     frame: 2.39,
     screen: 2.39,
@@ -45,12 +45,39 @@ const STEPS: { frame: R; screen: R; text: ReactNode }[] = [
     ),
   },
   {
+    frame: 1.43,
+    screen: 1.43,
+    guides: true,
+    text: (
+      <>
+        Films made for IMAX are often <strong>composed for every version at once</strong>. Dune: Part Two was shot
+        entirely for 1.43:1 &ldquo;while protecting 1.90:1 for digital Imax exhibition and 2.39:1 for traditional
+        theatrical exhibition and home release&rdquo;
+        <Ev k="independent" s="asc" />. The lines show those frames cut from the centre; where each release really
+        crops isn&rsquo;t published.
+      </>
+    ),
+  },
+  {
     frame: 2.39,
     screen: 1.43,
     text: (
       <>
         Now a <strong>2.39 film on a 1.43 screen</strong>. Nothing is cut, but {pct(1 - fitFrame(2.39, 1.43).h)} of the
         screen stays dark. A taller screen only pays off when the film was framed for it.
+      </>
+    ),
+  },
+  {
+    frame: 1.9,
+    screen: 1.9,
+    sequences: true,
+    text: (
+      <>
+        Many releases <strong>expand only for select sequences</strong>
+        <Ev k="claim" s="disney" />. On a 1.90 screen the bars vanish when an IMAX sequence starts and return when it
+        ends. Disney+ streams 13 Marvel films this way, with up to 26% more picture in those sequences
+        <Ev k="claim" s="disney" />.
       </>
     ),
   },
@@ -73,12 +100,21 @@ function describe(frame: number, screen: number): ReactNode {
 export default function Frame() {
   const section = useRef<HTMLElement>(null)
   const track = useRef<HTMLDivElement>(null)
-  const { still } = useEnv()
+  const { still, reduced } = useEnv()
   const [step, setStep] = useState(0)
   const stepRef = useRef(0)
   const [manual, setManual] = useState<{ frame: R; screen: R } | null>(null)
-  const frame = manual?.frame ?? STEPS[step].frame
-  const screen = manual?.screen ?? STEPS[step].screen
+  const current = manual ? null : STEPS[step]
+  // The select-sequences step flips between a regular scene (2.39) and an IMAX sequence (1.90).
+  const [inSequence, setInSequence] = useState(true)
+  useEffect(() => {
+    if (!current?.sequences || reduced) return setInSequence(true)
+    const id = setInterval(() => setInSequence((v) => !v), 2400)
+    return () => clearInterval(id)
+  }, [current, reduced])
+  const frame = manual?.frame ?? (current!.sequences && !inSequence ? 2.39 : current!.frame)
+  const screen = manual?.screen ?? current!.screen
+  const guides = !!current?.guides
 
   // Scrolling through the section walks the four steps; touching a control takes over until you scroll to a new step.
   useEffect(() => {
@@ -102,9 +138,10 @@ export default function Frame() {
     () => {
       stage.frameRatio = frame
       stage.screenRatio = screen
+      stage.guides = guides
       stage.beams = 1
     },
-    [frame, screen],
+    [frame, screen, guides],
   )
 
   const fit = fitFrame(frame, screen)
@@ -113,8 +150,7 @@ export default function Frame() {
   ) : (
     <>
       Artemis I launch, 16 Nov 2022. Photo: NASA/Joel Kowsky, public domain
-      <Ev k="independent" s="nasa" />. One tall photo, cut down the way a narrower screen cuts it. This is geometry,
-      not any film&rsquo;s actual extraction.
+      <Ev k="independent" s="nasa" />. One tall photo, cut from the centre the way a narrower screen would cut it.
     </>
   )
 
@@ -127,11 +163,11 @@ export default function Frame() {
         <p className="body mt-5">
           Aspect ratio is width divided by height: 2.39 is a wide strip, 1.43 is almost square. When a film&rsquo;s
           frame and a screen&rsquo;s shape disagree, something gives: black bars, or a cropped picture. Screens here
-          keep the same width, so taller means more picture. Keep scrolling to step through four cases, or pick your own.
+          keep the same width, so taller means more picture. Keep scrolling to step through six cases, or pick your own.
         </p>
         <p className="small mobile-only mt-4">{credit}</p>
       </header>
-      <div ref={track} style={{ height: '400svh' }}>
+      <div ref={track} style={{ height: '600svh' }}>
         <div className="sticky">
         <div className="copy-col scrim">
           <p className="body min-h-[6.5em]" aria-live="polite">
@@ -154,6 +190,7 @@ export default function Frame() {
         <ScreenSlot
           screen={screen}
           frame={frame}
+          guides={guides}
           caption={credit}
           alt={`A rocket launch at night shown at ${ratio(frame)} on a ${ratio(screen)} screen. ${pct(masterShown(frame))} of the full frame is visible.`}
         />

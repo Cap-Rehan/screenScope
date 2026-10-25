@@ -118,6 +118,12 @@ export default function Imax() {
           </div>
 
           <p className="small mt-5 max-w-[60ch]">
+            On posters, &ldquo;Shot with IMAX&rdquo; means IMAX&rsquo;s own cameras, natively 1.43:1. &ldquo;Filmed for
+            IMAX&rdquo; means a film planned for IMAX throughout, often on certified digital cameras that fill 1.90
+            screens
+            <Ev k="independent" s="slashfilmImax" />.
+          </p>
+          <p className="small mt-3 max-w-[60ch]">
             IMAX&rsquo;s theatre finder doesn&rsquo;t list which system a venue runs
             <Ev k="independent" s="engadget" />, and &ldquo;LieMAX&rdquo; is a fan nickname, not a specification
             <Ev k="independent" s="slashfilm" />.

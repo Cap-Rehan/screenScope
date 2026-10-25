@@ -11,6 +11,7 @@ const ROOM_W = 26
 const ROOM_D = 38
 const PROJECTOR = new THREE.Vector3(0, 14, ROOM_D - 1)
 
+const GUIDE_RATIOS = [1.9, 2.39]
 const smooth = (x: number) => x * x * (3 - 2 * x)
 const damp = THREE.MathUtils.damp
 
@@ -57,7 +58,7 @@ function Theater({ src }: { src: string }) {
   picture.colorSpace = THREE.SRGBColorSpace
 
   // Damped values the scene actually renders.
-  const live = useRef({ ratio: stage.screenRatio, frame: stage.frameRatio, beams: stage.beams, shot: shotFor('hook', stage, 1), look: new THREE.Vector3(0, 8.5, 0) })
+  const live = useRef({ guides: 0, personScale: 1, ratio: stage.screenRatio, frame: stage.frameRatio, beams: stage.beams, shot: shotFor('hook', stage, 1), look: new THREE.Vector3(0, 8.5, 0) })
 
   const refs = {
     surface: useRef<THREE.Mesh>(null),
@@ -69,9 +70,15 @@ function Theater({ src }: { src: string }) {
     orb: useRef<THREE.Mesh>(null),
     dust: useRef<THREE.Points>(null),
     light: useRef<THREE.PointLight>(null),
+    person: useRef<THREE.Mesh>(null),
+    guides: [useRef<THREE.LineLoop>(null), useRef<THREE.LineLoop>(null)],
   }
 
   const glowTex = useMemo(radialTexture, [])
+  const unitRect = useMemo(
+    () => new THREE.BufferGeometry().setFromPoints([[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]].map(([x, y]) => new THREE.Vector3(x, y, 0))),
+    [],
+  )
   const imageMat = useMemo(() => new THREE.MeshBasicMaterial({ map: picture, transparent: true }), [picture])
 
   // Two beam pyramids from projector lens(es) to the lit image rectangle.
@@ -164,6 +171,16 @@ function Theater({ src }: { src: string }) {
     blankMat.color.copy(SCREEN_WHITE).multiplyScalar(0.92 * light)
     blankMat.opacity = 1 - L.shot.image
 
+    // Frame lines: where 1.90 and 2.39 versions sit inside the 1.43 picture, cut from the centre.
+    L.guides = damp(L.guides, stage.guides && stage.shots[Math.round(stage.t)] === 'frame' ? 1 : 0, k, dt)
+    GUIDE_RATIOS.forEach((r, n) => {
+      const g = refs.guides[n].current!
+      g.visible = L.guides > 0.01
+      g.scale.set(iw, (ih * L.frame) / r, 1)
+      g.position.y = cy
+      ;(g.material as THREE.LineBasicMaterial).opacity = L.guides
+    })
+
     refs.glow.current!.scale.set(SCREEN_W * 2.1, H * 2.6, 1)
     refs.glow.current!.position.y = cy
     ;(refs.glow.current!.material as THREE.MeshBasicMaterial).opacity = 0.55 * light
@@ -190,6 +207,12 @@ function Theater({ src }: { src: string }) {
       mesh.geometry.computeBoundingSphere()
       ;(mesh.material as THREE.MeshBasicMaterial).opacity = 0.45 * light * visible * (1 - 0.3 * dual)
     })
+
+    // The person keeps 1.8 m against the real width of the screen picked in the scale section.
+    const metres = stage.shots[Math.round(stage.t)] === 'scale' ? stage.screenMetres : SCREEN_W
+    L.personScale = damp(L.personScale, SCREEN_W / metres, k, dt)
+    refs.person.current!.scale.setScalar(L.personScale)
+    refs.person.current!.position.y = 0.88 * L.personScale
 
     // Seats fade out for straight-on demo shots so they never block the screen.
     const seatMat = refs.seats.current!.material as THREE.MeshLambertMaterial
@@ -280,12 +303,17 @@ function Theater({ src }: { src: string }) {
         <planeGeometry />
         <meshBasicMaterial transparent />
       </mesh>
+      {GUIDE_RATIOS.map((r, n) => (
+        <lineLoop key={r} ref={refs.guides[n]} geometry={unitRect} position-z={0.06}>
+          <lineBasicMaterial color={n === 0 ? '#F3EEE4' : '#FFA531'} transparent />
+        </lineLoop>
+      ))}
       {beams.map((m, n) => (
         <primitive key={n} object={m} />
       ))}
 
       {/* A person, for scale */}
-      <mesh position={[7, 0.88, 1.2]}>
+      <mesh ref={refs.person} position={[7, 0.88, 1.2]}>
         <capsuleGeometry args={[0.22, 1.3, 4, 8]} />
         <meshBasicMaterial color="#000000" />
       </mesh>
