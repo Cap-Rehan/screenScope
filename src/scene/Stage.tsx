@@ -3,7 +3,7 @@ import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { fitFrame, MASTER_RATIO } from '../lib/geometry'
 import { gains, makeSpeakers } from '../lib/sound'
-import { GAMUTS, paintLocus } from '../lib/colour'
+import { STILL_H, STILL_W, drawStill, srgbCss } from '../lib/still'
 import { FOV, SCREEN_W, screenCentreY, screenHeight, shotFor, stage, type Shot } from './state'
 
 const LAMP = new THREE.Color('#FFA531')
@@ -41,32 +41,12 @@ function lerpShot(a: Shot, b: Shot, k: number): Shot {
   }
 }
 
-/** The colour chart as a 1.90:1 screen image: the visible-colour horseshoe and the three gamut triangles. */
-function chartTexture() {
+/** The colour section's laser still, as the 1.90:1 screen image. */
+function stillTexture() {
   const c = document.createElement('canvas')
-  c.width = 1024
-  c.height = 540
-  const S = 555
-  const map = ([x, y]: [number, number]): [number, number] => [290 + x * S, 520 - y * S]
-  const ctx = paintLocus(c, map, (px, py) => [(px - 290) / S, (520 - py) / S])
-  ctx.globalCompositeOperation = 'destination-over'
-  ctx.fillStyle = '#000'
-  ctx.fillRect(0, 0, c.width, c.height)
-  ctx.globalCompositeOperation = 'source-over'
-  ctx.lineWidth = 4
-  ;(
-    [
-      ['rec709', '#8E867B'],
-      ['p3', '#FFA531'],
-      ['rec2020', '#F3EEE4'],
-    ] as const
-  ).forEach(([key, colour]) => {
-    ctx.beginPath()
-    GAMUTS[key].forEach((p, i) => ctx[i ? 'lineTo' : 'moveTo'](...map(p)))
-    ctx.closePath()
-    ctx.strokeStyle = colour
-    ctx.stroke()
-  })
+  c.width = STILL_W
+  c.height = STILL_H
+  drawStill(c.getContext('2d')!, srgbCss)
   const tex = new THREE.CanvasTexture(c)
   tex.colorSpace = THREE.SRGBColorSpace
   return tex
@@ -111,8 +91,7 @@ function Theater({ src }: { src: string }) {
   }
 
   const glowTex = useMemo(radialTexture, [])
-  // Painting the chart takes a moment, so only once.
-  const chartTex = useMemo(chartTexture, [])
+  const chartTex = useMemo(stillTexture, [])
   const unitRect = useMemo(
     () => new THREE.BufferGeometry().setFromPoints([[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]].map(([x, y]) => new THREE.Vector3(x, y, 0))),
     [],

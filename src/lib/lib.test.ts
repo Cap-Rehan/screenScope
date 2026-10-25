@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { cutoffFrequency, extraArea, fitFrame, impliedK, masterShown, mtf, pixelsPerDegree, viewAngleDeg } from './geometry'
 import { gains, makeSpeakers, nearestGroup } from './sound'
 import { LISTENER, renderGains, speakerPosition } from './audio'
-import { DCI_WHITE, GAMUTS, inGamut, visible, xyToDisplayRGB } from './colour'
+import { DCI_WHITE, GAMUTS, inGamut, outsideSrgb, p3ToSrgb, visible, xyToDisplayRGB } from './colour'
 
 describe('aspect ratio maths', () => {
   it('matches IMAX\'s "up to 26%" for 2.39 -> 1.90 at the same width', () => {
@@ -96,5 +96,19 @@ describe('colour', () => {
   })
   it('the sRGB red primary maps to pure red', () => {
     expect(xyToDisplayRGB([0.64, 0.33])).toEqual([255, 0, 0])
+  })
+})
+
+describe('P3 vs sRGB', () => {
+  it('white and greys are the same in both', () => {
+    for (const c of p3ToSrgb([1, 1, 1])) expect(c).toBeCloseTo(1, 2)
+    expect(outsideSrgb([0.5, 0.5, 0.5])).toBe(false)
+  })
+  it('pure P3 red and green are outside sRGB', () => {
+    expect(outsideSrgb([1, 0, 0])).toBe(true)
+    expect(outsideSrgb([0, 1, 0])).toBe(true)
+  })
+  it('a muted colour fits in sRGB', () => {
+    expect(outsideSrgb([0.6, 0.4, 0.3])).toBe(false)
   })
 })

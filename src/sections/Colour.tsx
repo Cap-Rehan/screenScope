@@ -1,7 +1,9 @@
-import { useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import { Ev } from '../components/Ev'
 import { DCI_WHITE, GAMUTS, LOCUS, inGamut, paintLocus, visible, xyToDisplayRGB } from '../lib/colour'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useWhileActive } from '../lib/hooks'
+import { STILL_H, STILL_W, drawStill, mutedCss, p3Canvas, p3Css, srgbCss } from '../lib/still'
 import { stage } from '../scene/state'
 
 type Key = keyof typeof GAMUTS
@@ -36,6 +38,82 @@ const PRESETS: { label: string; xy: XY }[] = [
   { label: 'Deep red, 650 nm', xy: nudge([0.726, 0.274]) },
   { label: 'Cyan, 490 nm', xy: nudge([0.0454, 0.295]) },
 ]
+
+/** Wipe between the same still in sRGB and in P3. Real on P3 screens, a labelled simulation elsewhere. */
+function Compare() {
+  const figure = useRef<HTMLElement>(null)
+  const narrow = useRef<HTMLCanvasElement>(null)
+  const wide = useRef<HTMLCanvasElement>(null)
+  const [pos, setPos] = useState(50)
+  const real = SCREEN.key !== 'rec709' && p3Canvas()
+
+  useEffect(() => {
+    drawStill(narrow.current!.getContext('2d')!, real ? srgbCss : mutedCss)
+    drawStill(wide.current!.getContext('2d', real ? { colorSpace: 'display-p3' } : undefined)!, real ? p3Css : srgbCss)
+  }, [real])
+
+  useEffect(() => {
+    const st = ScrollTrigger.create({
+      trigger: figure.current,
+      start: 'top bottom',
+      end: 'bottom top',
+      onToggle: (self) => (stage.dimScreen = self.isActive),
+    })
+    return () => {
+      st.kill()
+      stage.dimScreen = false
+    }
+  }, [])
+
+  return (
+    <figure ref={figure}>
+      <div className="relative aspect-[1.9] overflow-hidden rounded-[4px] bg-black">
+        <canvas ref={wide} width={STILL_W} height={STILL_H} className="absolute inset-0 h-full w-full" aria-hidden="true" />
+        <canvas
+          ref={narrow}
+          width={STILL_W}
+          height={STILL_H}
+          className="absolute inset-0 h-full w-full"
+          style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}
+          aria-hidden="true"
+        />
+        <div className="pointer-events-none absolute inset-y-0 w-0.5 bg-screen" style={{ left: `${pos}%` }}>
+          <span className="absolute top-1/2 left-1/2 grid size-9 -translate-1/2 place-items-center rounded-full bg-screen text-black">↔</span>
+        </div>
+        <span className="small pointer-events-none absolute top-3 left-3 rounded-full bg-black/70 px-3 py-1 text-screen">
+          Rec. 709 / sRGB
+        </span>
+        <span className="small pointer-events-none absolute top-3 right-3 rounded-full bg-black/70 px-3 py-1 text-lamp">
+          P3
+        </span>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={pos}
+          onChange={(e) => setPos(+e.target.value)}
+          aria-label="Drag to compare the sRGB and P3 versions"
+          className="absolute inset-0 h-full w-full cursor-ew-resize opacity-0"
+        />
+      </div>
+      <figcaption className="small mt-3 max-w-[64ch]">
+        {real ? (
+          <>
+            <strong className="text-screen">This difference is real on your screen.</strong> Your display reports{' '}
+            {SCREEN.label}, so the right side uses colours the left side can&rsquo;t contain. Watch the reds and greens.
+            P3 here is your display&rsquo;s version; cinema&rsquo;s DCI-P3 has the same primaries.
+          </>
+        ) : (
+          <>
+            <strong className="text-screen">Simulated.</strong> Your display reports sRGB, so it can&rsquo;t show the
+            extra P3 colours; the left side is desaturated to suggest the gap. On a wide-gamut screen (most recent
+            phones and Macs) this comparison is real.
+          </>
+        )}
+      </figcaption>
+    </figure>
+  )
+}
 
 export default function Colour() {
   const section = useRef<HTMLElement>(null)
@@ -80,17 +158,16 @@ export default function Colour() {
     <section ref={section} data-shot="colour" aria-labelledby="colour-title">
       <header className="scene flex min-h-[110svh] items-end">
         <h2 id="colour-title" className="display h-section scrim max-w-[12ch]">
-          Every system draws a different triangle.
+          The same scene, more colour.
         </h2>
       </header>
-      <div className="scene grid items-center gap-12 lg:grid-cols-[1fr_1.1fr]">
+      <div className="scene grid items-center gap-12 lg:grid-cols-[1fr_1.6fr]">
       <div className="scrim">
         <p className="body">
-          The horseshoe holds every colour of light the eye can see
-          <Ev k="standard" s="cie" />. A projector mixes three primaries, so it can only show colours inside the
-          triangle they make. Cinema&rsquo;s reference is DCI-P3
-          <Ev k="standard" s="st2113" />; HD television and most of the web use the smaller Rec. 709
-          <Ev k="standard" s="bt709" />; Rec. 2020 reaches further
+          A projector mixes three primary colours, so it can only show the colours between them: its gamut. HD
+          television and most of the web use Rec. 709, also called sRGB
+          <Ev k="standard" s="bt709" />. Cinema&rsquo;s reference, DCI-P3, reaches further into reds and greens
+          <Ev k="standard" s="st2113" />; Rec. 2020 goes further still
           <Ev k="standard" s="bt2020" />.
         </p>
         <p className="body">
@@ -99,14 +176,19 @@ export default function Colour() {
           <Ev k="claim" s="christieRgb" />. Whether any particular IMAX or Dolby auditorium covers Rec. 2020 wasn&rsquo;t
           verified.
         </p>
-        <p className="body">
-          The dotted triangle is your own screen: your browser reports it covers about <strong>{SCREEN.label}</strong>.
-          Click anywhere on the chart to test a colour.
-        </p>
+      </div>
+      <Compare />
       </div>
 
+      <details className="scene !pt-0">
+        <summary className="chip inline-flex w-fit list-none">See it on the colour chart</summary>
+        <p className="body mt-6">
+          The horseshoe holds every colour of light the eye can see
+          <Ev k="standard" s="cie" />; each triangle is a gamut. The dotted one is your own screen: your browser
+          reports about <strong>{SCREEN.label}</strong>. Click anywhere on the chart to test a colour.
+        </p>
       {/* Opaque so the chart on the 3D screen behind doesn't double up with this one. */}
-      <div className="panel grid gap-6 md:grid-cols-[1.2fr_1fr] md:items-start" style={{ background: 'var(--color-velvet)' }}>
+      <div className="panel mt-6 grid max-w-5xl gap-6 md:grid-cols-[1.2fr_1fr] md:items-start" style={{ background: 'var(--color-velvet)' }}>
         <svg
           viewBox={`0 0 ${W} ${H}`}
           className="w-full cursor-crosshair touch-none"
@@ -195,7 +277,7 @@ export default function Colour() {
           </p>
         </div>
       </div>
-      </div>
+      </details>
     </section>
   )
 }
