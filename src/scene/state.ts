@@ -17,7 +17,7 @@ export const stage = {
   ignite: 0,
   /** Screen brightness set by the light demo, 0..1 */
   brightness: 1,
-  /** Colour section: dim the cinema screen while the side-by-side still is in view, so they don't double up. */
+  /** Colour section: dim the cinema screen while the side-by-side photo is in view, so they don't double up. */
   dimScreen: false,
   /** Pixels section fly-in, 0 = seats, 1 = nose against the screen */
   dive: 0,
@@ -47,7 +47,7 @@ export type Shot = {
   image: number
   seats: number
   speakers: number
-  /** 0..1: the screen shows the colour section's still instead of the picture */
+  /** 0..1: the screen shows the colour section's photo instead of the picture */
   chart?: number
 }
 

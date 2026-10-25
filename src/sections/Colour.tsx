@@ -3,7 +3,6 @@ import { Ev } from '../components/Ev'
 import { DCI_WHITE, GAMUTS, LOCUS, inGamut, paintLocus, visible, xyToDisplayRGB } from '../lib/colour'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useWhileActive } from '../lib/hooks'
-import { STILL_H, STILL_W, drawStill, mutedCss, p3Canvas, p3Css, srgbCss } from '../lib/still'
 import { stage } from '../scene/state'
 
 type Key = keyof typeof GAMUTS
@@ -39,18 +38,16 @@ const PRESETS: { label: string; xy: XY }[] = [
   { label: 'Cyan, 490 nm', xy: nudge([0.0454, 0.295]) },
 ]
 
-/** Wipe between the same still in sRGB and in P3. Real on P3 screens, a labelled simulation elsewhere. */
+const BASE = import.meta.env.BASE_URL
+// Share of this photo's pixels outside sRGB, measured offline from the Adobe RGB original.
+const OUTSIDE_SRGB = 0.085
+
+/** Wipe between a wide-gamut photo and the same photo clipped to sRGB, with an overlay marking what sRGB loses. */
 function Compare() {
   const figure = useRef<HTMLElement>(null)
-  const narrow = useRef<HTMLCanvasElement>(null)
-  const wide = useRef<HTMLCanvasElement>(null)
   const [pos, setPos] = useState(50)
-  const real = SCREEN.key !== 'rec709' && p3Canvas()
-
-  useEffect(() => {
-    drawStill(narrow.current!.getContext('2d')!, real ? srgbCss : mutedCss)
-    drawStill(wide.current!.getContext('2d', real ? { colorSpace: 'display-p3' } : undefined)!, real ? p3Css : srgbCss)
-  }, [real])
+  const [overlay, setOverlay] = useState(false)
+  const wide = SCREEN.key !== 'rec709'
 
   useEffect(() => {
     const st = ScrollTrigger.create({
@@ -67,24 +64,28 @@ function Compare() {
 
   return (
     <figure ref={figure}>
-      <div className="relative aspect-[1.9] overflow-hidden rounded-[4px] bg-black">
-        <canvas ref={wide} width={STILL_W} height={STILL_H} className="absolute inset-0 h-full w-full" aria-hidden="true" />
-        <canvas
-          ref={narrow}
-          width={STILL_W}
-          height={STILL_H}
+      <div className="relative aspect-[1600/1148] overflow-hidden rounded-[4px] bg-black">
+        {/* The original keeps its Adobe RGB profile, so the browser shows as much of it as the screen can. */}
+        <img
+          src={`${BASE}media/kingfisher-adobergb.jpg`}
+          alt="A common kingfisher on a branch, its back feathers a vivid blue and teal."
+          className="absolute inset-0 h-full w-full"
+        />
+        <img
+          src={`${BASE}media/kingfisher-srgb.jpg`}
+          alt=""
           className="absolute inset-0 h-full w-full"
           style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}
-          aria-hidden="true"
         />
+        {overlay && <img src={`${BASE}media/kingfisher-outside-srgb.png`} alt="" className="absolute inset-0 h-full w-full" />}
         <div className="pointer-events-none absolute inset-y-0 w-0.5 bg-screen" style={{ left: `${pos}%` }}>
           <span className="absolute top-1/2 left-1/2 grid size-9 -translate-1/2 place-items-center rounded-full bg-screen text-black">↔</span>
         </div>
         <span className="small pointer-events-none absolute top-3 left-3 rounded-full bg-black/70 px-3 py-1 text-screen">
-          Rec. 709 / sRGB
+          Clipped to sRGB
         </span>
         <span className="small pointer-events-none absolute top-3 right-3 rounded-full bg-black/70 px-3 py-1 text-lamp">
-          P3
+          Original, wider gamut
         </span>
         <input
           type="range"
@@ -92,24 +93,35 @@ function Compare() {
           max={100}
           value={pos}
           onChange={(e) => setPos(+e.target.value)}
-          aria-label="Drag to compare the sRGB and P3 versions"
+          aria-label="Drag to compare the sRGB and wide-gamut versions"
           className="absolute inset-0 h-full w-full cursor-ew-resize opacity-0"
         />
       </div>
+      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3">
+        <button type="button" className="chip" aria-pressed={overlay} onClick={() => setOverlay((o) => !o)}>
+          Show colours sRGB can&rsquo;t display
+        </button>
+        <span className="small">
+          About {Math.round(OUTSIDE_SRGB * 100)}% of this photo
+          <Ev k="estimate" />
+        </span>
+      </div>
       <figcaption className="small mt-3 max-w-[64ch]">
-        {real ? (
+        {wide ? (
           <>
-            <strong className="text-screen">This difference is real on your screen.</strong> Your display reports{' '}
-            {SCREEN.label}, so the right side uses colours the left side can&rsquo;t contain. Watch the reds and greens.
-            P3 here is your display&rsquo;s version; cinema&rsquo;s DCI-P3 has the same primaries.
+            <strong className="text-screen">The difference is real on your screen.</strong> Your display reports{' '}
+            {SCREEN.label}, so the right side shows feather blues the left side can&rsquo;t contain. It&rsquo;s subtle,
+            as real photos are: most of any scene already fits in sRGB.
           </>
         ) : (
           <>
-            <strong className="text-screen">Simulated.</strong> Your display reports sRGB, so it can&rsquo;t show the
-            extra P3 colours; the left side is desaturated to suggest the gap. On a wide-gamut screen (most recent
-            phones and Macs) this comparison is real.
+            <strong className="text-screen">Both sides look the same on your screen.</strong> Your display reports sRGB,
+            so it can&rsquo;t show the extra colours either. Turn on the overlay to see where they are.
           </>
-        )}
+        )}{' '}
+        The photo was saved in Adobe RGB, a wide gamut close to cinema&rsquo;s DCI-P3 but reaching further into cyan.
+        Photo: Laitche, CC BY-SA 4.0
+        <Ev k="independent" s="kingfisher" />.
       </figcaption>
     </figure>
   )

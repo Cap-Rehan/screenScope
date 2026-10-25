@@ -3,7 +3,6 @@ import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { fitFrame, MASTER_RATIO } from '../lib/geometry'
 import { gains, makeSpeakers } from '../lib/sound'
-import { STILL_H, STILL_W, drawStill, srgbCss } from '../lib/still'
 import { FOV, SCREEN_W, screenCentreY, screenHeight, shotFor, stage, type Shot } from './state'
 
 const LAMP = new THREE.Color('#FFA531')
@@ -13,6 +12,7 @@ const ROOM_D = 38
 const PROJECTOR = new THREE.Vector3(0, 14, ROOM_D - 1)
 
 const GUIDE_RATIOS = [1.9, 2.39]
+const KINGFISHER_RATIO = 1600 / 1148
 const smooth = (x: number) => x * x * (3 - 2 * x)
 const damp = THREE.MathUtils.damp
 
@@ -39,17 +39,6 @@ function lerpShot(a: Shot, b: Shot, k: number): Shot {
     speakers: l(a.speakers, b.speakers),
     chart: l(a.chart ?? 0, b.chart ?? 0),
   }
-}
-
-/** The colour section's laser still, as the 1.90:1 screen image. */
-function stillTexture() {
-  const c = document.createElement('canvas')
-  c.width = STILL_W
-  c.height = STILL_H
-  drawStill(c.getContext('2d')!, srgbCss)
-  const tex = new THREE.CanvasTexture(c)
-  tex.colorSpace = THREE.SRGBColorSpace
-  return tex
 }
 
 function radialTexture() {
@@ -91,7 +80,9 @@ function Theater({ src }: { src: string }) {
   }
 
   const glowTex = useMemo(radialTexture, [])
-  const chartTex = useMemo(stillTexture, [])
+  // The colour section's photo (the sRGB copy; WebGL here renders sRGB anyway).
+  const chartTex = useLoader(THREE.TextureLoader, `${import.meta.env.BASE_URL}media/kingfisher-srgb.jpg`)
+  chartTex.colorSpace = THREE.SRGBColorSpace
   const unitRect = useMemo(
     () => new THREE.BufferGeometry().setFromPoints([[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]].map(([x, y]) => new THREE.Vector3(x, y, 0))),
     [],
@@ -184,10 +175,12 @@ function Theater({ src }: { src: string }) {
     picture.repeat.set(1, rep)
     picture.offset.set(0, (1 - rep) / 2)
     imageMat.color.setScalar(light)
-    imageMat.opacity = L.shot.image
+    imageMat.opacity = L.shot.image * (1 - L.chart)
     const chart = refs.chart.current!
     chart.visible = L.chart > 0.01
-    chart.scale.set(iw, ih, 1)
+    // Fit the photo inside the screen without stretching it.
+    const chartFit = fitFrame(KINGFISHER_RATIO, L.ratio)
+    chart.scale.set(SCREEN_W * chartFit.w, H * chartFit.h, 1)
     chart.position.y = cy
     const chartMat = chart.material as THREE.MeshBasicMaterial
     chartMat.opacity = L.chart

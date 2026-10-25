@@ -15,7 +15,7 @@ ScreenScope is a single-page, scroll-driven guide to cinema formats: aspect rati
 | Real films | Watch official IMAX videos (loaded only when you press play) |
 | Pixels | Fly up to the screen until the photo's pixels show; work out pixels per degree from your seat; read a "K" figure off Kodak's measured film curves |
 | Brightness and contrast | Compare the cinema standard's 11–17 fL range with manufacturer claims; sequential vs in-frame contrast |
-| Colour | Colour-filled CIE chart with Rec. 709, DCI-P3, Rec. 2020 and your own screen's gamut; click any colour to see which systems can show it |
+| Colour | Drag between a wide-gamut photo and the same photo clipped to sRGB (real on P3 screens), mark the colours sRGB can't show, and explore the CIE chart |
 | Sound | Hear channels vs objects through virtual speakers around your head (headphones recommended), with a fly-by |
 | Scale | Real screens, from Leonberg's record 38.8 m wall down, beside a 1.8 m person |
 | Formats | Six systems side by side, plus a checklist for booking |
@@ -64,6 +64,7 @@ Film stills are usually copyrighted, so none are included. To try the aspect-rat
 ## Credits
 
 - Launch photo: NASA/Joel Kowsky, Artemis I, 16 Nov 2022 (public domain).
+- Kingfisher photo: [Laitche, Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Common_kingfisher,_October_2015,_Osaka_VII_-_AdobeRGB.jpg), CC BY-SA 4.0. The resized copies in `public/media/kingfisher-*` are CC BY-SA 4.0 as well.
 - Film curves: digitised from Kodak's VISION3 500T 5219 technical brochure.
 - Colour data: CIE 1931 2° colour matching functions via CVRL.
 - Videos: embedded from IMAX's official YouTube channel.

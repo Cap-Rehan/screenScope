@@ -87,26 +87,3 @@ export function paintLocus(canvas: HTMLCanvasElement, map: (xy: XY) => [number, 
   return ctx
 }
 
-type RGB = [number, number, number]
-
-// Display P3 (D65) -> linear sRGB, composed from the standard P3->XYZ and XYZ->sRGB matrices.
-const P3_TO_SRGB = [
-  [1.2249, -0.2247, 0],
-  [-0.042, 1.0419, 0],
-  [-0.0197, -0.0786, 1.0979],
-]
-const toLinear = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
-const toGamma = (c: number) => (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055)
-
-const linearSrgb = (p3: RGB) => {
-  const lin = p3.map(toLinear)
-  return P3_TO_SRGB.map((row) => row[0] * lin[0] + row[1] * lin[1] + row[2] * lin[2]) as RGB
-}
-
-/** Display P3 colour (0..1, gamma-encoded) as the nearest sRGB colour: out-of-range channels are clipped. */
-export function p3ToSrgb(p3: RGB): RGB {
-  return linearSrgb(p3).map((c) => toGamma(Math.min(1, Math.max(0, c)))) as RGB
-}
-
-/** Is this P3 colour outside what sRGB can show? */
-export const outsideSrgb = (p3: RGB) => linearSrgb(p3).some((c) => c < -0.0005 || c > 1.0005)

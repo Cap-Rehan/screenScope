@@ -132,6 +132,11 @@ export const SOURCES = {
     url: 'http://www.cvrl.org/database/data/cmfs/ciexyz31_1.csv',
     note: 'Used to draw the spectral locus.',
   },
+  kingfisher: {
+    title: 'Laitche: Common kingfisher, October 2015, Osaka VII (AdobeRGB), Wikimedia Commons',
+    url: 'https://commons.wikimedia.org/wiki/File:Common_kingfisher,_October_2015,_Osaka_VII_-_AdobeRGB.jpg',
+    note: 'CC BY-SA 4.0. Resized by ScreenScope, plus an sRGB copy and an overlay; those copies are CC BY-SA 4.0 too.',
+  },
   nasa: {
     title: 'NASA/Joel Kowsky: Artemis I launch, 16 Nov 2022 (NHQ202211160006)',
     url: 'https://images.nasa.gov/details/NHQ202211160006',
